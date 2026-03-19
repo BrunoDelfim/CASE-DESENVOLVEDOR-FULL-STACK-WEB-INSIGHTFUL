@@ -1,0 +1,58 @@
+services:
+    mysql:
+        image: mysql:8.0
+        container_name: catalog_mysql
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: catalog
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: laravel
+        ports:
+            - "3306:3306"
+        volumes:
+            - mysql_data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot --silent || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
+
+    api:
+        build:
+            context: ./api
+            dockerfile: Dockerfile
+        container_name: catalog_api
+        restart: unless-stopped
+        working_dir: /var/www
+        volumes:
+            - ./api:/var/www
+        ports:
+            - "8000:8000"
+        depends_on:
+            mysql:
+                condition: service_healthy
+        environment:
+            APP_ENV: local
+            APP_KEY: ""          # será gerado no entrypoint
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: catalog
+            DB_USERNAME: laravel
+            DB_PASSWORD: laravel
+
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        container_name: catalog_frontend
+        restart: unless-stopped
+        ports:
+            - "5173:5173"
+        depends_on:
+            - api
+
+volumes:
+    mysql_data:
